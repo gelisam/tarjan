@@ -16,6 +16,12 @@ limitedLog2 (suc limit) n@(suc _) = suc (limitedLog2 limit (n div 2))
 log2 : ℕ → ℕ
 log2 n = limitedLog2 n n
 
+limitedBits : (limit : ℕ)
+            → (n : ℕ)
+            → Vec Bit (limitedLog2 limit n)
+limitedBits zero        _         = []
+limitedBits (suc limit) zero      = []
+limitedBits (suc limit) n@(suc _) = limitedBits limit (n div 2) ∷ʳ n mod 2
+
 bits : (n : ℕ) → Vec Bit (log2 n)
-bits zero      = []
-bits n@(suc _) = bits (n div 2) ∷ʳ n mod 2
+bits n = limitedBits n n
