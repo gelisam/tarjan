@@ -1,9 +1,9 @@
 module Main where
 
-open import Data.Nat using (ℕ)
-open import Data.List using (List; upTo)
+open import Data.List using (List; map; upTo)
+open import Data.Vec using (Vec)
 
 open import Bits
 
-test : List ℕ
-test = upTo 10
+test : List (Vec Bit _)
+test = map bits (upTo 10)
