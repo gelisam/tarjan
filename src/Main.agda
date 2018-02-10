@@ -10,9 +10,9 @@ Bit : Set
 Bit = Fin 2
 
 log2 : ℕ → ℕ
-log2 0 = 0
-log2 n = suc (log2 (n div 2))
+log2 zero      = zero
+log2 n@(suc _) = suc (log2 (n div 2))
 
 bits : (n : ℕ) → Vec Bit (log2 n)
-bits 0 = []
-bits n = bits (n div 2) ∷ʳ n mod 2
+bits zero      = []
+bits n@(suc _) = bits (n div 2) ∷ʳ n mod 2
