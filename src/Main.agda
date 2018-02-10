@@ -1,9 +1,10 @@
 module Main where
 
 open import Data.List using (List; map; upTo)
-open import Data.Vec using (Vec)
+open import Data.Vec using (toList)
+open import Function using (_∘_)
 
 open import Bits
 
-test : List (Vec Bit _)
-test = map bits (upTo 10)
+test : List (List Bit)
+test = map (toList ∘ bits) (upTo 10)
