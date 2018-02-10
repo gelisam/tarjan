@@ -1,4 +1,4 @@
-
+{-# OPTIONS --no-termination-check #-}
 module Main where
 
 open import Data.Fin using (Fin)
