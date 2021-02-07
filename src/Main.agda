@@ -11,6 +11,7 @@ open import IORef
 open import Int
 open import Monad
 open import SimpleIO
+open import IxIO
 
 
 module _ (g : Graph)
@@ -26,8 +27,9 @@ module _ (g : Graph)
            (pre : IORef Int)
            (count : IORef Int)
            where
-    push : Int → IO ⊤
-    push v = do
+    push : {@erased xs : List Int}
+         → (x : Int) → IxIO xs (x ∷ xs) ⊤
+    push v = UnsafeIxIO do
       i ← readIORef stack-size
       stack [ i ]≔ v
       modifyIORef stack-size succ
@@ -92,7 +94,7 @@ module _ (g : Graph)
         low [ v ]≔ low[v]
         modifyIORef pre succ
         min ← newIORef low[v]
-        push v
+        runIxIO {_} {[]} {[]} (push v)
         out-edges ← g [ v ]
         dfsFor min v out-edges
 
