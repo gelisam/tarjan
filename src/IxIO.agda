@@ -18,9 +18,13 @@ module _ {I : Set} where
   runIxIO : ∀ {@erased i j} {A} → IxIO i j A → IO A
   runIxIO (UnsafeIxIO ioA) = ioA
 
+  lift : ∀ {@erased i} {A}
+       → IO A → IxIO i i A
+  lift ioA = UnsafeIxIO ioA
+
   IxIO-return : ∀ {@erased i} {A}
               → A → IxIO i i A
-  IxIO-return a = UnsafeIxIO do
+  IxIO-return a = lift do
     return a
 
   IxIO->>= : ∀ {@erased i j k} {A B}

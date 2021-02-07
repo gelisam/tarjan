@@ -9,9 +9,11 @@ open import Bool
 open import Graph
 open import IORef
 open import Int
+open import IxIO
+open import Linked
 open import Monad
 open import SimpleIO
-open import IxIO
+open import Step
 
 
 module _ (g : Graph)
@@ -34,11 +36,13 @@ module _ (g : Graph)
       stack [ i ]≔ v
       modifyIORef stack-size succ
 
-    pop : IO Int
-    pop = do
+    pop : {@erased x : Int} {@erased xs : List Int}
+        → IxIO (x ∷ xs) xs (Linked x)
+    pop {x} = UnsafeIxIO do
       modifyIORef stack-size pred
       i ← readIORef stack-size
-      stack [ i ]
+      actual ← stack [ i ]
+      return (unsafeLinked x actual)
 
     -- int w;
     -- do {
@@ -47,15 +51,16 @@ module _ (g : Graph)
     --     low[w] = G.V();
     -- } while (w != v);
     -- count++;
-    dfsWhile : Int → IO ⊤
+    dfsWhile : (v : Int) → IxIO tt tt ⊤
     dfsWhile v = do
-      w ← pop
-      count-value ← readIORef count
-      id [ w ]≔ count-value
-      low [ w ]≔ n
-      if w == v
-        then modifyIORef count succ
-        else dfsWhile v
+      -- w , _ ← pop
+      --count-value ← lift (readIORef count)
+      --lift (id [ w ]≔ count-value)
+      --lift (low [ w ]≔ n)
+      --if w == v
+      --  then lift (modifyIORef count succ)
+      --  else dfsWhile v
+      return tt
 
     mutual
       -- for (int w : G.adj(v)) {
@@ -67,19 +72,22 @@ module _ (g : Graph)
       --     return;
       -- }
       -- do {...}
-      dfsFor : IORef Int → Int → List Node → IO ⊤
+      dfsFor : IORef Int
+             → Int
+             → List Node
+             → IxIO tt tt ⊤
       dfsFor min v (w ∷ out-edges) = do
-        w-marked? ← marked [ w ]
-        when (not w-marked?) (dfs w)
-        low[w] ← low [ w ]
-        min-value ← readIORef min
-        when (low[w] < min-value) (writeIORef min low[w])
+        w-marked? ← lift (marked [ w ])
+        ixWhen (not w-marked?) (dfs w)
+        low[w] ← lift (low [ w ])
+        min-value ← lift (readIORef min)
+        lift (when (low[w] < min-value) (writeIORef min low[w]))
         dfsFor min v out-edges
       dfsFor min v [] = do
-        min-value ← readIORef min
-        low[v] ← low [ v ]
+        min-value ← lift (readIORef min)
+        low[v] ← lift (low [ v ])
         if (min-value < low[v])
-          then low [ v ]≔ min-value
+          then lift (low [ v ]≔ min-value)
           else dfsWhile v
 
       -- marked[v] = true;
@@ -87,15 +95,15 @@ module _ (g : Graph)
       -- int min = low[v];
       -- stack.push(v);
       -- for (int w : G.adj(v)) {...}
-      dfs : Int → IO ⊤
+      dfs : Int → IxIO tt tt ⊤
       dfs v = do
-        marked [ v ]≔ true
-        low[v] ← readIORef pre
-        low [ v ]≔ low[v]
-        modifyIORef pre succ
-        min ← newIORef low[v]
-        runIxIO {_} {[]} {[]} (push v)
-        out-edges ← g [ v ]
+        lift (marked [ v ]≔ true)
+        low[v] ← lift (readIORef pre)
+        lift (low [ v ]≔ low[v])
+        lift (modifyIORef pre succ)
+        min ← lift (newIORef low[v])
+        --push v
+        out-edges ← lift (g [ v ])
         dfsFor min v out-edges
 
     -- for (int v = 0; v < G.V(); v++) {
@@ -105,7 +113,7 @@ module _ (g : Graph)
     tarjanFor v = do
       when (v < n) do
         v-marked? ← marked [ v ]
-        when (not v-marked?) (dfs v)
+        when (not v-marked?) (runIxIO (dfs v))
         tarjanFor (succ v)
 
   -- marked = new boolean[G.V()];
