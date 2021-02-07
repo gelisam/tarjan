@@ -2,7 +2,7 @@
 set -e
 
 clear
-agda \
+agda --compile \
   --library standard-library \
   --include-path src \
   src/Main.agda
