@@ -1,11 +1,17 @@
 {-# OPTIONS --no-termination --type-in-type #-}
-module Monad where
+module MonadClasses where
 
-open import Data.Empty
-  using (⊥)
 open import Data.Unit
   using (⊤)
 
+
+record Monad (M : Set → Set) : Set where
+  field
+    return : ∀ {A} → A → M A
+    _>>=_  : ∀  {A B} → M A → (A → M B) → M B
+
+  _>>_ : ∀ {A} → M ⊤ → M A → M A
+  m⊤ >> mA = m⊤ >>= λ _ → mA
 
 module _ {I : Set} where
   record IxMonad (M : (@erased p q : I → Set) → Set → Set) : Set where
@@ -22,9 +28,3 @@ module _ {I : Set} where
          → M q r A
          → M p r A
     m⊤ >> mA = m⊤ >>= λ _ → mA
-
-open IxMonad {{...}} public
-
-
-Monad : (Set → Set) → Set
-Monad M = IxMonad {I = ⊥} (λ _ _ → M)

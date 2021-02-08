@@ -6,34 +6,37 @@ open import Data.Unit
 
 open import Graph
 open import Int
-open import Monad
+open import MonadClasses
 open import SimpleIO
-  using (IO)
 
 
 module _ {I : Set} where
-  data IxIO (@erased i j : I) (A : Set) : Set where
-    UnsafeIxIO : IO A → IxIO i j A
+  data IxIO (@erased p q : I → Set) (A : Set) : Set where
+    UnsafeIxIO : IO A → IxIO p q A
 
-  runIxIO : ∀ {@erased i j} {A} → IxIO i j A → IO A
+  runIxIO : ∀ {@erased p q} {A} → IxIO p q A → IO A
   runIxIO (UnsafeIxIO ioA) = ioA
 
-  lift : ∀ {@erased i} {A}
-       → IO A → IxIO i i A
+  lift : ∀ {@erased p} {A}
+       → IO A → IxIO p p A
   lift ioA = UnsafeIxIO ioA
 
-  IxIO-return : ∀ {@erased i} {A}
-              → A → IxIO i i A
+  IxIO-return : ∀ {@erased p} {A}
+              → A → IxIO p p A
   IxIO-return a = lift do
     return a
+    where
+      open Monad IO-Monad
 
-  IxIO->>= : ∀ {@erased i j k} {A B}
-           → IxIO i j A
-           → (A → IxIO j k B)
-           → IxIO i k B
+  IxIO->>= : ∀ {@erased p q r} {A B}
+           → IxIO p q A
+           → (A → IxIO q r B)
+           → IxIO p r B
   IxIO->>= (UnsafeIxIO ioA) f = UnsafeIxIO do
     a ← ioA
     runIxIO (f a)
+    where
+      open Monad IO-Monad
 
   instance
     IxIO-Monad : IxMonad IxIO

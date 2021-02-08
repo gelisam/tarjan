@@ -6,7 +6,7 @@ open import IO.Primitive public
 import IO.Primitive
   as IO
 
-open import Monad
+open import MonadClasses
 
 
 instance

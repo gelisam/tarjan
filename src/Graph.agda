@@ -6,7 +6,7 @@ open import Data.List public
 
 open import Array
 open import Int
-open import Monad
+open import MonadClasses
 open import SimpleIO
 
 
@@ -35,3 +35,5 @@ mkExampleGraph = do
   g [ node 7 ]≔ (node 6 ∷ [])
   g [ node 8 ]≔ (node 5 ∷ node 7 ∷ node 8 ∷ [])
   return g
+  where
+    open Monad IO-Monad
