@@ -16,13 +16,6 @@ open import SimpleIO
 open import Step
 
 
--- maybe index by predicates, like in the Arrows of outrageous fortunes paper?
-ixIf : (b : Bool)
-     → IxIO i j1 A
-     → IxIO i j2 A
-     → IxIO i (if b then j1 else j2) A
-
-
 module _ (g : Graph)
          where
   n : Int
