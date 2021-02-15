@@ -214,18 +214,24 @@ module _ (g : Graph)
                (λ _ xs → xs SubsequenceOf vs)
     dfs v = M2.dfs dfs v
 
---    -- for (int v = 0; v < G.V(); v++) {
---    --     if (!marked[v]) dfs(G, v);
---    -- }
---    tarjanFor : Int → IO ⊤
---    tarjanFor v = do
---      when (v < n) do
---        v-marked? ← marked [ v ]
---        when (not v-marked?) (runIxIO (dfs v))
---        tarjanFor (succ v)
---      where
---        open Monad IO-Monad
---
+    -- for (int v = 0; v < G.V(); v++) {
+    --     if (!marked[v]) dfs(G, v);
+    -- }
+    tarjanFor : ∀ v {vs}
+              → IxIO (λ xs → xs SubsequenceOf vs)
+                     ⊤
+                     (λ _ xs → xs SubsequenceOf vs)
+    tarjanFor v = do
+      ixWhen (v < n) do
+        rearrange (λ _ (_ , p) → p)
+        v-marked? ← lift (marked [ v ])
+        ixWhen (not v-marked?) do
+          rearrange (λ _ (_ , p) → p)
+          dfs v
+        tarjanFor (succ v)
+      where
+        open IxMonad IxIO-Monad
+
 --  -- marked = new boolean[G.V()];
 --  -- stack = new Stack<Integer>();
 --  -- id = new int[G.V()]; 
