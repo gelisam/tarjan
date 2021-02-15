@@ -262,11 +262,11 @@ module _ (g : Graph)
     where
       open IxMonad IxIO-Monad
 
---main : IO ⊤
---main = do
---  g ← mkExampleGraph
---  r ← tarjan g
---  printIntArray r -- should be [0,0,0,2,2,1,1,3]
---  return tt
---  where
---    open Monad IO-Monad
+main : IO ⊤
+main = do
+  g ← mkExampleGraph
+  r ← tarjan g
+  printIntArray r -- should be [0,0,0,2,2,1,1,3]
+  return tt
+  where
+    open Monad IO-Monad
