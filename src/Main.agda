@@ -207,7 +207,12 @@ module _ (g : Graph)
         dfsFor recur min v out-edges
         where
           open IxMonad IxIO-Monad
-    open M2 using (dfs)
+    dfs : ∀ {vs}
+        → Int
+        → IxIO (λ xs → xs SubsequenceOf vs)
+               ⊤
+               (λ _ xs → xs SubsequenceOf vs)
+    dfs v = M2.dfs dfs v
 
 --    -- for (int v = 0; v < G.V(); v++) {
 --    --     if (!marked[v]) dfs(G, v);
