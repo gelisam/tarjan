@@ -61,8 +61,8 @@ module _ (g : Graph)
            (stack-size : IORef Int)
            where
     push : (x : Int)
-         → (P Q : List Int → Set)
-         → (∀ xs → P xs → Q (x ∷ xs))
+         → (@erased P Q : List Int → Set)
+         → (@erased P→Q : ∀ xs → P xs → Q (x ∷ xs))
          → IxIO P ⊤ (λ _ → Q)
     push x _ _ _ = unsafeIxIO do
       i ← readIORef stack-size
@@ -71,10 +71,10 @@ module _ (g : Graph)
       where
         open Monad IO-Monad
 
-    pop : (P : List Int → Set)
-        → (Q : Int → List Int → Set)
-        → (∀ xs → P xs → NonEmpty xs)
-        → (∀ x xs → P (x ∷ xs) → Q x xs)
+    pop : (@erased P : List Int → Set)
+        → (@erased Q : Int → List Int → Set)
+        → (@erased P→NonEmpty : ∀ xs → P xs → NonEmpty xs)
+        → (@erased P→Q : ∀ x xs → P (x ∷ xs) → Q x xs)
         → IxIO P Int Q
     pop _ _ _ _ = unsafeIxIO do
       modifyIORef stack-size pred
@@ -90,38 +90,38 @@ module _ (g : Graph)
            (pre : IORef Int)
            (count : IORef Int)
            where
-      module M1 (dfs : ∀ {vs}
+      module M1 (dfs : ∀ {@erased vs}
                      → Int
                      → IxIO (λ xs → xs SubsequenceOf vs)
                             ⊤
                             (λ _ xs → xs SubsequenceOf vs))
                 (min : IORef Int)
                 (v : Int)
-                {vs : List Int}
+                {@erased vs : List Int}
                 where
-        P : List Int → Set
+        @erased P : List Int → Set
         P xs = xs SubsequenceOf (v ∷ vs)
 
-        Q : Int → List Int → Set
+        @erased Q : Int → List Int → Set
         Q x xs = (x ≡ v × xs SubsequenceOf vs)
                ⊎ xs SubsequenceOf (v ∷ vs)
 
-        R : List Int → Set
+        @erased R : List Int → Set
         R xs = xs SubsequenceOf vs
 
-        P→NonEmpty : ∀ xs → P xs → NonEmpty xs
+        @erased P→NonEmpty : ∀ xs → P xs → NonEmpty xs
         P→NonEmpty _ (keep∷ _) = tt
         P→NonEmpty _ (skip∷ _) = tt
 
-        P→Q : ∀ x xs → P (x ∷ xs) → Q x xs
+        @erased P→Q : ∀ x xs → P (x ∷ xs) → Q x xs
         P→Q _ _ (keep∷ ss) = inj₁ (refl , ss)
         P→Q _ _ (skip∷ ss) = inj₂ ss
 
-        Q→R : ∀ x xs → (x == v) ≡ true × Q x xs → R xs
+        @erased Q→R : ∀ x xs → (x == v) ≡ true × Q x xs → R xs
         Q→R _ _ (prf , inj₁ (_ , i)) = i
         Q→R _ _ (prf , inj₂ i) = tail-of-subsequence i
 
-        Q→P : ∀ x xs → (x == v) ≡ false × Q x xs → P xs
+        @erased Q→P : ∀ x xs → (x == v) ≡ false × Q x xs → P xs
         Q→P _ _ (prf , inj₂ i) = i
         Q→P x _ (prf , inj₁ (x≡v , _)) = ⊥-elim (x≢v x≡v)
           where
@@ -185,21 +185,21 @@ module _ (g : Graph)
             open IxMonad IxIO-Monad
       open M1 using (dfsWhile; dfsFor)
 
-      module M2 (recur : ∀ {vs}
+      module M2 (recur : ∀ {@erased vs}
                        → Int
                        → IxIO (λ xs → xs SubsequenceOf vs)
                               ⊤
                               (λ _ xs → xs SubsequenceOf vs))
                 (v : Int)
-                {vs : List Int}
+                {@erased vs : List Int}
                 where
-        P : List Int → Set
+        @erased P : List Int → Set
         P xs = xs SubsequenceOf vs
 
-        Q : List Int → Set
+        @erased Q : List Int → Set
         Q xs = xs SubsequenceOf (v ∷ vs)
 
-        P→Q : ∀ xs → P xs → Q (v ∷ xs)
+        @erased P→Q : ∀ xs → P xs → Q (v ∷ xs)
         P→Q _ ss = keep∷ ss
 
         -- marked[v] = true;
@@ -219,7 +219,7 @@ module _ (g : Graph)
           dfsFor recur min v out-edges
           where
             open IxMonad IxIO-Monad
-      dfs : ∀ {vs}
+      dfs : ∀ {@erased vs}
           → Int
           → IxIO (λ xs → xs SubsequenceOf vs)
                  ⊤
@@ -229,7 +229,7 @@ module _ (g : Graph)
       -- for (int v = 0; v < G.V(); v++) {
       --     if (!marked[v]) dfs(G, v);
       -- }
-      tarjanFor : ∀ v {vs}
+      tarjanFor : ∀ v {@erased vs}
                 → IxIO (λ xs → xs SubsequenceOf vs)
                        ⊤
                        (λ _ xs → xs SubsequenceOf vs)

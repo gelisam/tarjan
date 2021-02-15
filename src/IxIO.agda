@@ -53,8 +53,8 @@ module _ {I : Set} where
       ; _>>=_  = IxIO->>=
       }
 
-  rearrange : {P Q : I → Set}
-            → (∀ i → P i → Q i)
+  rearrange : {@erased P Q : I → Set}
+            → (@erased P→Q : ∀ i → P i → Q i)
             → IxIO P ⊤ (λ _ → Q)
   rearrange P→Q = unsafeIxIO do
     return tt

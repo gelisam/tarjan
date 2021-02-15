@@ -22,7 +22,7 @@ when false _    = return tt
       open Monad IO-Monad
 
 module _ {I : Set} where
-  ixWhen : {P : I → Set}
+  ixWhen : {@erased P : I → Set}
          → (b : Bool)
          → IxIO (λ i → b ≡ true × P i) ⊤ (λ _ → P)
          → IxIO P ⊤ (λ _ → P)
@@ -37,7 +37,7 @@ module _ {I : Set} where
       open IxMonad IxIO-Monad
 
   infix  0 ixIf_then_else_
-  ixIf_then_else_ : {P : I → Set} {A : Set} {Q : A → I → Set}
+  ixIf_then_else_ : {@erased P : I → Set} {A : Set} {@erased Q : A → I → Set}
                   → (b : Bool)
                   → IxIO (λ i → b ≡ true  × P i) A Q
                   → IxIO (λ i → b ≡ false × P i) A Q
