@@ -18,7 +18,6 @@ open import Graph
 open import IORef
 open import Int
 open import IxIO
-open import Linked
 open import MonadClasses
 open import SimpleIO
 
