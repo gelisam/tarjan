@@ -4,13 +4,15 @@ module Int where
 open import Agda.Builtin.Int
   renaming (Int to Integer)
 open import Data.Bool
-  using (Bool)
+  using (Bool; true; false; if_then_else_)
 open import Data.Nat public
   using (ℕ)
 open import Data.Unit
   using (⊤)
 open import Foreign.Haskell.Coerce
   using (coerce)
+open import Relation.Binary.PropositionalEquality
+  using (_≡_; _≢_)
 
 open import SimpleIO
 
@@ -33,3 +35,6 @@ postulate
 
 fromℕ : ℕ → Int
 fromℕ n = fromInteger (coerce n)
+
+postulate
+  ==→≡ : ∀ i j → if i == j then i ≡ j else i ≢ j

@@ -1,10 +1,14 @@
 {-# OPTIONS --no-termination --type-in-type #-}
 module Bool where
 
-open import Data.Unit
-  using (⊤; tt)
 open import Data.Bool public
   using (Bool; true; false; if_then_else_; not)
+open import Data.Product
+  using (_×_; _,_)
+open import Data.Unit
+  using (⊤; tt)
+open import Relation.Binary.PropositionalEquality
+  using (_≡_; refl)
 
 open import IxIO
 open import MonadClasses
@@ -17,11 +21,34 @@ when false _    = return tt
     where
       open Monad IO-Monad
 
-ixWhen : {I : Set} {i : I}
-       → Bool
-       → IxIO i ⊤ (λ _ → i)
-       → IxIO i ⊤ (λ _ → i)
-ixWhen true  body = body
-ixWhen false _    = return tt
+module _ {I : Set} where
+  ixWhen : {P : I → Set}
+         → (b : Bool)
+         → IxIO (λ i → b ≡ true × P i) ⊤ (λ _ → P)
+         → IxIO P ⊤ (λ _ → P)
+  ixWhen true body = do
+    rearrange (λ _ p → refl , p)
+    body
+    where
+      open IxMonad IxIO-Monad
+  ixWhen false _ = do
+    return tt
+    where
+      open IxMonad IxIO-Monad
+
+  infix  0 ixIf_then_else_
+  ixIf_then_else_ : {P : I → Set} {A : Set} {Q : A → I → Set}
+                  → (b : Bool)
+                  → IxIO (λ i → b ≡ true  × P i) A Q
+                  → IxIO (λ i → b ≡ false × P i) A Q
+                  → IxIO P A Q
+  ixIf true then body else _ = do
+    rearrange (λ _ p → refl , p)
+    body
+    where
+      open IxMonad IxIO-Monad
+  ixIf false then _ else body = do
+    rearrange (λ _ p → refl , p)
+    body
     where
       open IxMonad IxIO-Monad

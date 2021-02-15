@@ -11,28 +11,36 @@ open import SimpleIO
 
 
 module _ {I : Set} where
-  data IxIO (@erased i : I) (A : Set) (@erased mkJ : A → I) : Set where
-    UnsafeIxIO : IO A → IxIO i A mkJ
+  data IxIO (@erased P : I → Set)
+            (A : Set)
+            (@erased Q : A → I → Set)
+          : Set where
+    unsafeIxIO : IO A
+               → IxIO P A Q
 
-  runIxIO : ∀ {A} {@erased i mkJ} → IxIO i A mkJ → IO A
-  runIxIO (UnsafeIxIO ioA) = ioA
+  runIxIO : ∀ {A} {@erased P Q}
+          → IxIO P A Q
+          → IO A
+  runIxIO (unsafeIxIO ioA) = ioA
 
-  lift : ∀ {A} {@erased i}
-       → IO A → IxIO i A (λ _ → i)
-  lift ioA = UnsafeIxIO ioA
+  lift : ∀ {A} {@erased P}
+       → IO A
+       → IxIO P A (λ _ → P)
+  lift ioA = unsafeIxIO ioA
 
-  IxIO-return : ∀ {A} {@erased i}
-              → A → IxIO i A (λ _ → i)
+  IxIO-return : ∀ {A} {@erased P}
+              → A
+              → IxIO P A (λ _ → P)
   IxIO-return a = lift do
     return a
     where
       open Monad IO-Monad
 
-  IxIO->>= : ∀ {A B} {@erased i mkJ mkK}
-           → IxIO i A mkJ
-           → ((a : A) → IxIO (mkJ a) B mkK)
-           → IxIO i B mkK
-  IxIO->>= (UnsafeIxIO ioA) f = UnsafeIxIO do
+  IxIO->>= : ∀ {A B} {@erased P Q R}
+           → IxIO P A Q
+           → ((a : A) → IxIO (Q a) B R)
+           → IxIO P B R
+  IxIO->>= (unsafeIxIO ioA) f = unsafeIxIO do
     a ← ioA
     runIxIO (f a)
     where
@@ -44,3 +52,11 @@ module _ {I : Set} where
       { return = IxIO-return
       ; _>>=_  = IxIO->>=
       }
+
+  rearrange : {P Q : I → Set}
+            → (∀ i → P i → Q i)
+            → IxIO P ⊤ (λ _ → Q)
+  rearrange P→Q = unsafeIxIO do
+    return tt
+    where
+      open Monad IO-Monad
