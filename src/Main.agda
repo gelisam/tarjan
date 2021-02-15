@@ -27,18 +27,20 @@ NonEmpty : List Int → Set
 NonEmpty []      = ⊥
 NonEmpty (_ ∷ _) = ⊤
 
-data _EndsWith_ : List Int → List Int → Set where
-  here  : ∀ {xs}
-        → xs EndsWith xs
-  there : ∀ {x xs ys}
-        → xs EndsWith ys
-        → (x ∷ xs) EndsWith ys
+data _SubsequenceOf_ : List Int → List Int → Set where
+  []     : [] SubsequenceOf []
+  keep∷_ : ∀ {v xs ys}
+         → xs SubsequenceOf ys
+         → (v ∷ xs) SubsequenceOf (v ∷ ys)
+  skip∷_ : ∀ {x xs ys}
+         → xs SubsequenceOf ys
+         → (x ∷ xs) SubsequenceOf ys
 
-ends-with-tail : ∀ {xs y ys}
-               → xs EndsWith (y ∷ ys)
-               → xs EndsWith ys
-ends-with-tail here      = there here
-ends-with-tail (there i) = there (ends-with-tail i)
+tail-of-subsequence : ∀ {xs y ys}
+                    → xs SubsequenceOf (y ∷ ys)
+                    → xs SubsequenceOf ys
+tail-of-subsequence (keep∷ ss) = skip∷ ss
+tail-of-subsequence (skip∷ ss) = skip∷ (tail-of-subsequence ss)
 
 module _ (g : Graph)
          where
@@ -76,28 +78,36 @@ module _ (g : Graph)
       where
         open Monad IO-Monad
 
-    module M1 (v : Int) {vs : List Int} where
+    module M1 (min : IORef Int)
+              (v : Int)
+              {vs : List Int}
+              (dfs : ∀ {vs}
+                   → Int
+                   → IxIO (λ xs → xs SubsequenceOf vs)
+                          ⊤
+                          (λ _ xs → xs SubsequenceOf vs))
+             where
       P : List Int → Set
-      P xs = xs EndsWith (v ∷ vs)
+      P xs = xs SubsequenceOf (v ∷ vs)
 
       Q : Int → List Int → Set
-      Q x xs = (x ≡ v × xs EndsWith vs)
-             ⊎ xs EndsWith (v ∷ vs)
+      Q x xs = (x ≡ v × xs SubsequenceOf vs)
+             ⊎ xs SubsequenceOf (v ∷ vs)
 
       R : List Int → Set
-      R xs = xs EndsWith vs
+      R xs = xs SubsequenceOf vs
 
       P→NonEmpty : ∀ xs → P xs → NonEmpty xs
-      P→NonEmpty _ here      = tt
-      P→NonEmpty _ (there _) = tt
+      P→NonEmpty _ (keep∷ _) = tt
+      P→NonEmpty _ (skip∷ _) = tt
 
       P→Q : ∀ x xs → P (x ∷ xs) → Q x xs
-      P→Q _ _ here      = inj₁ (refl , here)
-      P→Q _ _ (there i) = inj₂ i
+      P→Q _ _ (keep∷ ss) = inj₁ (refl , ss)
+      P→Q _ _ (skip∷ ss) = inj₂ ss
 
       Q→R : ∀ x xs → (x == v) ≡ true × Q x xs → R xs
       Q→R _ _ (prf , inj₁ (_ , i)) = i
-      Q→R _ _ (prf , inj₂ i) = ends-with-tail i
+      Q→R _ _ (prf , inj₂ i) = tail-of-subsequence i
 
       Q→P : ∀ x xs → (x == v) ≡ false × Q x xs → P xs
       Q→P _ _ (prf , inj₂ i) = i
@@ -128,22 +138,6 @@ module _ (g : Graph)
             dfsWhile)
         where
           open IxMonad IxIO-Monad
-    open M1 using (dfsWhile)
-
-    module M2 (min : IORef Int)
-              (v : Int)
-              {vs : List Int}
-              (dfs : ∀ {vs}
-                   → Int
-                   → IxIO (λ xs → xs EndsWith vs)
-                          ⊤
-                          (λ _ xs → xs EndsWith vs))
-             where
-      P : List Int → Set
-      P xs = xs EndsWith (v ∷ vs)
-
-      Q : List Int → Set
-      Q xs = xs EndsWith vs
 
       -- for (int w : G.adj(v)) {
       --     if (!marked[w]) dfs(G, w);
@@ -155,7 +149,7 @@ module _ (g : Graph)
       -- }
       -- do {...}
       dfsFor : List Node
-             → IxIO P ⊤ (λ _ → Q)
+             → IxIO P ⊤ (λ _ → R)
       dfsFor (w ∷ out-edges) = do
         w-marked? ← lift (marked [ w ])
         ixWhen (not w-marked?) (do
@@ -172,12 +166,12 @@ module _ (g : Graph)
         low[v] ← lift (low [ v ])
         if (min-value < low[v])
           then (do
-            rearrange (λ _ i → ends-with-tail i)
+            rearrange (λ _ i → tail-of-subsequence i)
             lift (low [ v ]≔ min-value))
-          else dfsWhile v
+          else dfsWhile
         where
           open IxMonad IxIO-Monad
-    open M2 using (dfsFor)
+    open M1 using (dfsWhile; dfsFor)
 
     --module M3 where
     --  -- marked[v] = true;
@@ -187,9 +181,9 @@ module _ (g : Graph)
     --  -- for (int w : G.adj(v)) {...}
     --  dfs : ∀ {vs}
     --      → Int
-    --      → IxIO (λ xs → xs EndsWith vs)
+    --      → IxIO (λ xs → xs SubsequenceOf vs)
     --             ⊤
-    --             (λ _ xs → xs EndsWith vs)
+    --             (λ _ xs → xs SubsequenceOf vs)
     --  dfs v = do
     --    lift (marked [ v ]≔ true)
     --    low[v] ← lift (readIORef pre)
