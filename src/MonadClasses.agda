@@ -14,17 +14,17 @@ record Monad (M : Set → Set) : Set where
   m⊤ >> mA = m⊤ >>= λ _ → mA
 
 module _ {I : Set} where
-  record IxMonad (M : (@erased p : I) → (A : Set) → (@erased q : A → I) → Set) : Set where
+  record IxMonad (M : (@erased i : I) → (A : Set) → (@erased mkJ : A → I) → Set) : Set where
     field
-      return : ∀ {@erased p} {A}
-             → A → M p A (λ _ → p)
-      _>>=_  : ∀ {A B} {@erased p q r}
-             → M p A q
-             → ((a : A) → M (q a) B r)
-             → M p B r
+      return : ∀ {@erased i} {A}
+             → A → M i A (λ _ → i)
+      _>>=_  : ∀ {A B} {@erased i mkJ mkK}
+             → M i A mkJ
+             → ((a : A) → M (mkJ a) B mkK)
+             → M i B mkK
 
-    _>>_ : ∀ {A} {@erased p q r}
-         → M p ⊤ q
-         → M (q tt) A r
-         → M p A r
+    _>>_ : ∀ {A} {@erased i mkJ mkK}
+         → M i ⊤ mkJ
+         → M (mkJ tt) A mkK
+         → M i A mkK
     m⊤ >> mA = m⊤ >>= λ _ → mA

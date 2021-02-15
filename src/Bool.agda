@@ -17,8 +17,10 @@ when false _    = return tt
     where
       open Monad IO-Monad
 
-ixWhen : {I : Set} {p : I → Set}
-       → Bool → IxIO p p ⊤ → IxIO p p ⊤
+ixWhen : {I : Set} {i : I}
+       → Bool
+       → IxIO i ⊤ (λ _ → i)
+       → IxIO i ⊤ (λ _ → i)
 ixWhen true  body = body
 ixWhen false _    = return tt
     where
