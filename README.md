@@ -14,4 +14,16 @@ Our approach is:
 
 The first two steps are technically sufficient to satisfy the two requirements of the challenge: it's the same algorithm, implemented using mutable arrays, and since we are using unsafe array-indexing calls, no runtime checks are performed. The third step is required in order to also satisfy the _spirit_ of the challenge, which is not just about avoiding a runtime check, but about using the type checker to guarantee that no runtime check is necessary. Finally, the fourth step prevents the third step from having an impact on the asymptotic complexity.
 
-Here is a pen-and-paper version of the proof being formalized. By induction, assume that the net effect of each recursive calls to `dfs` is to push zero or more values onto the stack. We now need to prove that the `dfs` call which makes those recursive calls also has this net effect. It first pushes `v` onto the stack, then performs a number of recursive calls which may push more values. Then, `dfs` may returns early, in which case the condition is satisfied because so far it has only pushed. Otherwise, `dfs` pops all the values from the stack until it pops `v`, in which case the condition is also satisfied because the stack is exactly as it was at the beginning of the call.
+## Proof 1
+
+Here is a pen-and-paper version of an easier version of the proof.
+
+By induction, assume that the net effect of each recursive calls to `dfs` is to push zero or more values onto the stack. We now need to prove that the `dfs` call which makes those recursive calls also has this net effect. It first pushes `v` onto the stack, then performs a number of recursive calls which may push more values. Then, `dfs` may returns early, in which case the condition is satisfied because so far it has only pushed. Otherwise, `dfs` pops all the values from the stack until it pops `v`, in which case the condition is also satisfied because the stack is exactly as it was at the beginning of the call.
+
+Note that `v` is still on the stack when we call `pop`, and therefore the stack is non-empty and so the call is safe.
+
+## Proof 2
+
+The above proof assumes that `dfs` pops all the values from the stack until it pops the `v` it initially pushed onto the stack. The code does that by popping values until the popped value is equal to `v`, which in practice will be that same `v` because the algorithm never pushes the same value onto the stack. I would prefer not to also have to prove that the algorithm never pushes the same value onto the stack, and fortunately, I don't have to, because the proof still goes through in the counter-factual case in which a different `v` is popped:
+
+...Otherwise, `dfs` pops some values from the stack until it pops a `v`. Since a `v` was pushed onto the stack at the very beginning of the `dfs` call, that `v` acts as a guard which guarantees that we stop popping before we touch anything which was on the stack before the `dfs` call began. Thus, any of the values we have popped must be values which have been pushed during the `dfs` call, and thus its net effect is to push zero or more values, as desired.
