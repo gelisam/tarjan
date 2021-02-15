@@ -11,14 +11,14 @@ open import SimpleIO
 
 
 module _ {I : Set} where
-  data IxIO (@erased p q : I → Set) (A : Set) : Set where
-    UnsafeIxIO : IO A → IxIO p q A
+  data IxIO (@erased p : I → Set) (A : Set) (q : A → I → Set) : Set where
+    UnsafeIxIO : IO A → IxIO p A q
 
-  runIxIO : ∀ {@erased p q} {A} → IxIO p q A → IO A
+  runIxIO : ∀ {@erased p q} {A} → IxIO p A q → IO A
   runIxIO (UnsafeIxIO ioA) = ioA
 
   lift : ∀ {@erased p} {A}
-       → IO A → IxIO p p A
+       → IO A → IxIO p A (λ _ → p)
   lift ioA = UnsafeIxIO ioA
 
   IxIO-return : ∀ {@erased p} {A}
