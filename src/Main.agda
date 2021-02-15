@@ -78,15 +78,15 @@ module _ (g : Graph)
       where
         open Monad IO-Monad
 
-    module M1 (min : IORef Int)
-              (v : Int)
-              {vs : List Int}
-              (dfs : ∀ {vs}
+    module M1 (dfs : ∀ {vs}
                    → Int
                    → IxIO (λ xs → xs SubsequenceOf vs)
                           ⊤
                           (λ _ xs → xs SubsequenceOf vs))
-             where
+              (min : IORef Int)
+              (v : Int)
+              {vs : List Int}
+              where
       P : List Int → Set
       P xs = xs SubsequenceOf (v ∷ vs)
 
@@ -173,29 +173,41 @@ module _ (g : Graph)
           open IxMonad IxIO-Monad
     open M1 using (dfsWhile; dfsFor)
 
-    --module M3 where
-    --  -- marked[v] = true;
-    --  -- low[v] = pre++;
-    --  -- int min = low[v];
-    --  -- stack.push(v);
-    --  -- for (int w : G.adj(v)) {...}
-    --  dfs : ∀ {vs}
-    --      → Int
-    --      → IxIO (λ xs → xs SubsequenceOf vs)
-    --             ⊤
-    --             (λ _ xs → xs SubsequenceOf vs)
-    --  dfs v = do
-    --    lift (marked [ v ]≔ true)
-    --    low[v] ← lift (readIORef pre)
-    --    lift (low [ v ]≔ low[v])
-    --    lift (modifyIORef pre succ)
-    --    min ← lift (newIORef low[v])
-    --    --push v
-    --    out-edges ← lift (g [ v ])
-    --    dfsFor dfs min v out-edges
-    --    where
-    --      open IxMonad IxIO-Monad
-    --open M3 using (dfs)
+    module M2 (recur : ∀ {vs}
+                     → Int
+                     → IxIO (λ xs → xs SubsequenceOf vs)
+                            ⊤
+                            (λ _ xs → xs SubsequenceOf vs))
+              (v : Int)
+              {vs : List Int}
+              where
+      P : List Int → Set
+      P xs = xs SubsequenceOf vs
+
+      Q : List Int → Set
+      Q xs = xs SubsequenceOf (v ∷ vs)
+
+      P→Q : ∀ xs → P xs → Q (v ∷ xs)
+      P→Q _ ss = keep∷ ss
+
+      -- marked[v] = true;
+      -- low[v] = pre++;
+      -- int min = low[v];
+      -- stack.push(v);
+      -- for (int w : G.adj(v)) {...}
+      dfs : IxIO P ⊤ (λ _ → P)
+      dfs = do
+        lift (marked [ v ]≔ true)
+        low[v] ← lift (readIORef pre)
+        lift (low [ v ]≔ low[v])
+        lift (modifyIORef pre succ)
+        min ← lift (newIORef low[v])
+        push v P Q P→Q
+        out-edges ← lift (g [ v ])
+        dfsFor recur min v out-edges
+        where
+          open IxMonad IxIO-Monad
+    open M2 using (dfs)
 
 --    -- for (int v = 0; v < G.V(); v++) {
 --    --     if (!marked[v]) dfs(G, v);
