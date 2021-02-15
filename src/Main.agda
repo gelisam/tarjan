@@ -130,56 +130,73 @@ module _ (g : Graph)
           open IxMonad IxIO-Monad
     open M1 using (dfsWhile)
 
---    mutual
---      -- for (int w : G.adj(v)) {
---      --     if (!marked[w]) dfs(G, w);
---      --     if (low[w] < min) min = low[w];
---      -- }
---      -- if (min < low[v]) {
---      --     low[v] = min;
---      --     return;
---      -- }
---      -- do {...}
---      dfsFor : IORef Int
---             → Int
---             → List Node
---             → IxIO trivial trivial ⊤
---      dfsFor min v (w ∷ out-edges) = do
---        w-marked? ← lift (marked [ w ])
---        ixWhen (not w-marked?) (dfs w)
---        low[w] ← lift (low [ w ])
---        min-value ← lift (readIORef min)
---        lift (when (low[w] < min-value) (writeIORef min low[w]))
---        dfsFor min v out-edges
---        where
---          open IxMonad IxIO-Monad
---      dfsFor min v [] = do
---        min-value ← lift (readIORef min)
---        low[v] ← lift (low [ v ])
---        if (min-value < low[v])
---          then lift (low [ v ]≔ min-value)
---          else dfsWhile v
---        where
---          open IxMonad IxIO-Monad
---
---      -- marked[v] = true;
---      -- low[v] = pre++;
---      -- int min = low[v];
---      -- stack.push(v);
---      -- for (int w : G.adj(v)) {...}
---      dfs : Int → IxIO trivial trivial ⊤
---      dfs v = do
---        lift (marked [ v ]≔ true)
---        low[v] ← lift (readIORef pre)
---        lift (low [ v ]≔ low[v])
---        lift (modifyIORef pre succ)
---        min ← lift (newIORef low[v])
---        --push v
---        out-edges ← lift (g [ v ])
---        dfsFor min v out-edges
---        where
---          open IxMonad IxIO-Monad
---
+    --module M2 (dfs : ∀ {vs}
+    --              → Int
+    --              → IxIO (λ xs → xs EndsWith vs)
+    --                     ⊤
+    --                     (λ _ xs → xs EndsWith vs))
+    --         where
+    --  -- for (int w : G.adj(v)) {
+    --  --     if (!marked[w]) dfs(G, w);
+    --  --     if (low[w] < min) min = low[w];
+    --  -- }
+    --  -- if (min < low[v]) {
+    --  --     low[v] = min;
+    --  --     return;
+    --  -- }
+    --  -- do {...}
+    --  dfsFor : ∀ {vs}
+    --         → IORef Int
+    --         → Int
+    --         → List Node
+    --         → IxIO (λ xs → xs EndsWith vs)
+    --                ⊤
+    --                (λ _ xs → xs EndsWith vs)
+    --  dfsFor min v (w ∷ out-edges) = do
+    --    w-marked? ← lift (marked [ w ])
+    --    ixWhen (not w-marked?) (do
+    --      rearrange (λ _ (_ , p) → p)
+    --      dfs w)
+    --    low[w] ← lift (low [ w ])
+    --    min-value ← lift (readIORef min)
+    --    lift (when (low[w] < min-value) (writeIORef min low[w]))
+    --    dfsFor min v out-edges
+    --    where
+    --      open IxMonad IxIO-Monad
+    --  dfsFor min v [] = do
+    --    min-value ← lift (readIORef min)
+    --    low[v] ← lift (low [ v ])
+    --    if (min-value < low[v])
+    --      then lift (low [ v ]≔ min-value)
+    --      else dfsWhile v
+    --    where
+    --      open IxMonad IxIO-Monad
+    --open M2 using (dfsFor)
+
+    --module M3 where
+    --  -- marked[v] = true;
+    --  -- low[v] = pre++;
+    --  -- int min = low[v];
+    --  -- stack.push(v);
+    --  -- for (int w : G.adj(v)) {...}
+    --  dfs : ∀ {vs}
+    --      → Int
+    --      → IxIO (λ xs → xs EndsWith vs)
+    --             ⊤
+    --             (λ _ xs → xs EndsWith vs)
+    --  dfs v = do
+    --    lift (marked [ v ]≔ true)
+    --    low[v] ← lift (readIORef pre)
+    --    lift (low [ v ]≔ low[v])
+    --    lift (modifyIORef pre succ)
+    --    min ← lift (newIORef low[v])
+    --    --push v
+    --    out-edges ← lift (g [ v ])
+    --    dfsFor dfs min v out-edges
+    --    where
+    --      open IxMonad IxIO-Monad
+    --open M3 using (dfs)
+
 --    -- for (int v = 0; v < G.V(); v++) {
 --    --     if (!marked[v]) dfs(G, v);
 --    -- }
