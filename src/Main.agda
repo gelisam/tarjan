@@ -76,60 +76,59 @@ module _ (g : Graph)
       where
         open Monad IO-Monad
 
-    -- int w;
-    -- do {
-    --     w = stack.pop();
-    --     id[w] = count;
-    --     low[w] = G.V();
-    -- } while (w != v);
-    -- count++;
-    dfsWhile : ∀ v {vs}
-             → IxIO (λ xs → xs EndsWith (v ∷ vs))
-                    ⊤
-                    (λ _ xs → xs EndsWith vs)
-    dfsWhile v {vs} = do
-      w ← pop P Q P→NonEmpty P→Q
-      count-value ← lift (readIORef count)
-      lift (id [ w ]≔ count-value)
-      lift (low [ w ]≔ n)
-      ixIf w == v
-        then (do
-          rearrange (Q→R w)
-          lift (modifyIORef count succ))
-        else (do
-          rearrange (Q→P w)
-          dfsWhile v)
-      where
-        open IxMonad IxIO-Monad
+    module M1 (v : Int) {vs : List Int} where
+      P : List Int → Set
+      P xs = xs EndsWith (v ∷ vs)
 
-        P : List Int → Set
-        P xs = xs EndsWith (v ∷ vs)
+      Q : Int → List Int → Set
+      Q x xs = (x ≡ v × xs EndsWith vs)
+             ⊎ xs EndsWith (v ∷ vs)
 
-        Q : Int → List Int → Set
-        Q x xs = (x ≡ v × xs EndsWith vs)
-               ⊎ xs EndsWith (v ∷ vs)
+      R : List Int → Set
+      R xs = xs EndsWith vs
 
-        R : List Int → Set
-        R xs = xs EndsWith vs
+      P→NonEmpty : ∀ xs → P xs → NonEmpty xs
+      P→NonEmpty _ here      = tt
+      P→NonEmpty _ (there _) = tt
 
-        P→NonEmpty : ∀ xs → P xs → NonEmpty xs
-        P→NonEmpty _ here      = tt
-        P→NonEmpty _ (there _) = tt
+      P→Q : ∀ x xs → P (x ∷ xs) → Q x xs
+      P→Q _ _ here      = inj₁ (refl , here)
+      P→Q _ _ (there i) = inj₂ i
 
-        P→Q : ∀ x xs → P (x ∷ xs) → Q x xs
-        P→Q _ _ here      = inj₁ (refl , here)
-        P→Q _ _ (there i) = inj₂ i
+      Q→R : ∀ x xs → (x == v) ≡ true × Q x xs → R xs
+      Q→R _ _ (prf , inj₁ (_ , i)) = i
+      Q→R _ _ (prf , inj₂ i) = ends-with-tail i
 
-        Q→R : ∀ x xs → (x == v) ≡ true × Q x xs → R xs
-        Q→R _ _ (prf , inj₁ (_ , i)) = i
-        Q→R _ _ (prf , inj₂ i) = ends-with-tail i
+      Q→P : ∀ x xs → (x == v) ≡ false × Q x xs → P xs
+      Q→P _ _ (prf , inj₂ i) = i
+      Q→P x _ (prf , inj₁ (x≡v , _)) = ⊥-elim (x≢v x≡v)
+        where
+          x≢v : x ≢ v
+          x≢v = subst (λ b → if b then x ≡ v else x ≢ v) prf (==→≡ x v)
 
-        Q→P : ∀ x xs → (x == v) ≡ false × Q x xs → P xs
-        Q→P _ _ (prf , inj₂ i) = i
-        Q→P x _ (prf , inj₁ (x≡v , _)) = ⊥-elim (x≢v x≡v)
-          where
-            x≢v : x ≢ v
-            x≢v = subst (λ b → if b then x ≡ v else x ≢ v) prf (==→≡ x v)
+      -- int w;
+      -- do {
+      --     w = stack.pop();
+      --     id[w] = count;
+      --     low[w] = G.V();
+      -- } while (w != v);
+      -- count++;
+      dfsWhile : IxIO P ⊤ (λ _ → R)
+      dfsWhile = do
+        w ← pop P Q P→NonEmpty P→Q
+        count-value ← lift (readIORef count)
+        lift (id [ w ]≔ count-value)
+        lift (low [ w ]≔ n)
+        ixIf w == v
+          then (do
+            rearrange (Q→R w)
+            lift (modifyIORef count succ))
+          else (do
+            rearrange (Q→P w)
+            dfsWhile)
+        where
+          open IxMonad IxIO-Monad
+    open M1 using (dfsWhile)
 
 --    mutual
 --      -- for (int w : G.adj(v)) {
