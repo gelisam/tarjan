@@ -18,10 +18,10 @@ module _ {I : Set} where
     unsafeIxIO : IO A
                → IxIO P A Q
 
-  runIxIO : ∀ {A} {@erased P Q}
-          → IxIO P A Q
-          → IO A
-  runIxIO (unsafeIxIO ioA) = ioA
+  unsafeRunIxIO : ∀ {A} {@erased P Q}
+                → IxIO P A Q
+                → IO A
+  unsafeRunIxIO (unsafeIxIO ioA) = ioA
 
   lift : ∀ {A} {@erased P}
        → IO A
@@ -42,7 +42,7 @@ module _ {I : Set} where
            → IxIO P B R
   IxIO->>= (unsafeIxIO ioA) f = unsafeIxIO do
     a ← ioA
-    runIxIO (f a)
+    unsafeRunIxIO (f a)
     where
       open Monad IO-Monad
 

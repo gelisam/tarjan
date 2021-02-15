@@ -47,13 +47,18 @@ module _ (g : Graph)
   n : Int
   n = size g
 
-  module _ (marked : Array Bool)
-           (id : Array Int)
-           (low : Array Int)
-           (stack : Array Int)
+  withStack : {A : Set} {P : A → List Int → Set}
+            → (Array Int → IORef Int → IxIO (λ xs → [] ≡ xs) A P)
+            → IO A
+  withStack body = do
+    stack ← newArray n (fromℕ 0)
+    stack-size ← newIORef (fromℕ 0)
+    unsafeRunIxIO (body stack stack-size)
+    where
+      open Monad IO-Monad
+  
+  module _ (stack : Array Int)
            (stack-size : IORef Int)
-           (pre : IORef Int)
-           (count : IORef Int)
            where
     push : (x : Int)
          → (P Q : List Int → Set)
@@ -78,179 +83,185 @@ module _ (g : Graph)
       where
         open Monad IO-Monad
 
-    module M1 (dfs : ∀ {vs}
-                   → Int
-                   → IxIO (λ xs → xs SubsequenceOf vs)
-                          ⊤
-                          (λ _ xs → xs SubsequenceOf vs))
-              (min : IORef Int)
-              (v : Int)
-              {vs : List Int}
-              where
-      P : List Int → Set
-      P xs = xs SubsequenceOf (v ∷ vs)
-
-      Q : Int → List Int → Set
-      Q x xs = (x ≡ v × xs SubsequenceOf vs)
-             ⊎ xs SubsequenceOf (v ∷ vs)
-
-      R : List Int → Set
-      R xs = xs SubsequenceOf vs
-
-      P→NonEmpty : ∀ xs → P xs → NonEmpty xs
-      P→NonEmpty _ (keep∷ _) = tt
-      P→NonEmpty _ (skip∷ _) = tt
-
-      P→Q : ∀ x xs → P (x ∷ xs) → Q x xs
-      P→Q _ _ (keep∷ ss) = inj₁ (refl , ss)
-      P→Q _ _ (skip∷ ss) = inj₂ ss
-
-      Q→R : ∀ x xs → (x == v) ≡ true × Q x xs → R xs
-      Q→R _ _ (prf , inj₁ (_ , i)) = i
-      Q→R _ _ (prf , inj₂ i) = tail-of-subsequence i
-
-      Q→P : ∀ x xs → (x == v) ≡ false × Q x xs → P xs
-      Q→P _ _ (prf , inj₂ i) = i
-      Q→P x _ (prf , inj₁ (x≡v , _)) = ⊥-elim (x≢v x≡v)
-        where
-          x≢v : x ≢ v
-          x≢v = subst (λ b → if b then x ≡ v else x ≢ v) prf (==→≡ x v)
-
-      -- int w;
-      -- do {
-      --     w = stack.pop();
-      --     id[w] = count;
-      --     low[w] = G.V();
-      -- } while (w != v);
-      -- count++;
-      dfsWhile : IxIO P ⊤ (λ _ → R)
-      dfsWhile = do
-        w ← pop P Q P→NonEmpty P→Q
-        count-value ← lift (readIORef count)
-        lift (id [ w ]≔ count-value)
-        lift (low [ w ]≔ n)
-        ixIf w == v
-          then (do
-            rearrange (Q→R w)
-            lift (modifyIORef count succ))
-          else (do
-            rearrange (Q→P w)
-            dfsWhile)
-        where
-          open IxMonad IxIO-Monad
-
-      -- for (int w : G.adj(v)) {
-      --     if (!marked[w]) dfs(G, w);
-      --     if (low[w] < min) min = low[w];
-      -- }
-      -- if (min < low[v]) {
-      --     low[v] = min;
-      --     return;
-      -- }
-      -- do {...}
-      dfsFor : List Node
-             → IxIO P ⊤ (λ _ → R)
-      dfsFor (w ∷ out-edges) = do
-        w-marked? ← lift (marked [ w ])
-        ixWhen (not w-marked?) (do
-          rearrange (λ _ (_ , p) → p)
-          dfs w)
-        low[w] ← lift (low [ w ])
-        min-value ← lift (readIORef min)
-        lift (when (low[w] < min-value) (writeIORef min low[w]))
-        dfsFor out-edges
-        where
-          open IxMonad IxIO-Monad
-      dfsFor [] = do
-        min-value ← lift (readIORef min)
-        low[v] ← lift (low [ v ])
-        if (min-value < low[v])
-          then (do
-            rearrange (λ _ i → tail-of-subsequence i)
-            lift (low [ v ]≔ min-value))
-          else dfsWhile
-        where
-          open IxMonad IxIO-Monad
-    open M1 using (dfsWhile; dfsFor)
-
-    module M2 (recur : ∀ {vs}
+    module _
+           (marked : Array Bool)
+           (id : Array Int)
+           (low : Array Int)
+           (pre : IORef Int)
+           (count : IORef Int)
+           where
+      module M1 (dfs : ∀ {vs}
                      → Int
                      → IxIO (λ xs → xs SubsequenceOf vs)
                             ⊤
                             (λ _ xs → xs SubsequenceOf vs))
-              (v : Int)
-              {vs : List Int}
-              where
-      P : List Int → Set
-      P xs = xs SubsequenceOf vs
+                (min : IORef Int)
+                (v : Int)
+                {vs : List Int}
+                where
+        P : List Int → Set
+        P xs = xs SubsequenceOf (v ∷ vs)
 
-      Q : List Int → Set
-      Q xs = xs SubsequenceOf (v ∷ vs)
+        Q : Int → List Int → Set
+        Q x xs = (x ≡ v × xs SubsequenceOf vs)
+               ⊎ xs SubsequenceOf (v ∷ vs)
 
-      P→Q : ∀ xs → P xs → Q (v ∷ xs)
-      P→Q _ ss = keep∷ ss
+        R : List Int → Set
+        R xs = xs SubsequenceOf vs
 
-      -- marked[v] = true;
-      -- low[v] = pre++;
-      -- int min = low[v];
-      -- stack.push(v);
-      -- for (int w : G.adj(v)) {...}
-      dfs : IxIO P ⊤ (λ _ → P)
-      dfs = do
-        lift (marked [ v ]≔ true)
-        low[v] ← lift (readIORef pre)
-        lift (low [ v ]≔ low[v])
-        lift (modifyIORef pre succ)
-        min ← lift (newIORef low[v])
-        push v P Q P→Q
-        out-edges ← lift (g [ v ])
-        dfsFor recur min v out-edges
+        P→NonEmpty : ∀ xs → P xs → NonEmpty xs
+        P→NonEmpty _ (keep∷ _) = tt
+        P→NonEmpty _ (skip∷ _) = tt
+
+        P→Q : ∀ x xs → P (x ∷ xs) → Q x xs
+        P→Q _ _ (keep∷ ss) = inj₁ (refl , ss)
+        P→Q _ _ (skip∷ ss) = inj₂ ss
+
+        Q→R : ∀ x xs → (x == v) ≡ true × Q x xs → R xs
+        Q→R _ _ (prf , inj₁ (_ , i)) = i
+        Q→R _ _ (prf , inj₂ i) = tail-of-subsequence i
+
+        Q→P : ∀ x xs → (x == v) ≡ false × Q x xs → P xs
+        Q→P _ _ (prf , inj₂ i) = i
+        Q→P x _ (prf , inj₁ (x≡v , _)) = ⊥-elim (x≢v x≡v)
+          where
+            x≢v : x ≢ v
+            x≢v = subst (λ b → if b then x ≡ v else x ≢ v) prf (==→≡ x v)
+
+        -- int w;
+        -- do {
+        --     w = stack.pop();
+        --     id[w] = count;
+        --     low[w] = G.V();
+        -- } while (w != v);
+        -- count++;
+        dfsWhile : IxIO P ⊤ (λ _ → R)
+        dfsWhile = do
+          w ← pop P Q P→NonEmpty P→Q
+          count-value ← lift (readIORef count)
+          lift (id [ w ]≔ count-value)
+          lift (low [ w ]≔ n)
+          ixIf w == v
+            then (do
+              rearrange (Q→R w)
+              lift (modifyIORef count succ))
+            else (do
+              rearrange (Q→P w)
+              dfsWhile)
+          where
+            open IxMonad IxIO-Monad
+
+        -- for (int w : G.adj(v)) {
+        --     if (!marked[w]) dfs(G, w);
+        --     if (low[w] < min) min = low[w];
+        -- }
+        -- if (min < low[v]) {
+        --     low[v] = min;
+        --     return;
+        -- }
+        -- do {...}
+        dfsFor : List Node
+               → IxIO P ⊤ (λ _ → R)
+        dfsFor (w ∷ out-edges) = do
+          w-marked? ← lift (marked [ w ])
+          ixWhen (not w-marked?) (do
+            rearrange (λ _ (_ , p) → p)
+            dfs w)
+          low[w] ← lift (low [ w ])
+          min-value ← lift (readIORef min)
+          lift (when (low[w] < min-value) (writeIORef min low[w]))
+          dfsFor out-edges
+          where
+            open IxMonad IxIO-Monad
+        dfsFor [] = do
+          min-value ← lift (readIORef min)
+          low[v] ← lift (low [ v ])
+          if (min-value < low[v])
+            then (do
+              rearrange (λ _ i → tail-of-subsequence i)
+              lift (low [ v ]≔ min-value))
+            else dfsWhile
+          where
+            open IxMonad IxIO-Monad
+      open M1 using (dfsWhile; dfsFor)
+
+      module M2 (recur : ∀ {vs}
+                       → Int
+                       → IxIO (λ xs → xs SubsequenceOf vs)
+                              ⊤
+                              (λ _ xs → xs SubsequenceOf vs))
+                (v : Int)
+                {vs : List Int}
+                where
+        P : List Int → Set
+        P xs = xs SubsequenceOf vs
+
+        Q : List Int → Set
+        Q xs = xs SubsequenceOf (v ∷ vs)
+
+        P→Q : ∀ xs → P xs → Q (v ∷ xs)
+        P→Q _ ss = keep∷ ss
+
+        -- marked[v] = true;
+        -- low[v] = pre++;
+        -- int min = low[v];
+        -- stack.push(v);
+        -- for (int w : G.adj(v)) {...}
+        dfs : IxIO P ⊤ (λ _ → P)
+        dfs = do
+          lift (marked [ v ]≔ true)
+          low[v] ← lift (readIORef pre)
+          lift (low [ v ]≔ low[v])
+          lift (modifyIORef pre succ)
+          min ← lift (newIORef low[v])
+          push v P Q P→Q
+          out-edges ← lift (g [ v ])
+          dfsFor recur min v out-edges
+          where
+            open IxMonad IxIO-Monad
+      dfs : ∀ {vs}
+          → Int
+          → IxIO (λ xs → xs SubsequenceOf vs)
+                 ⊤
+                 (λ _ xs → xs SubsequenceOf vs)
+      dfs v = M2.dfs dfs v
+
+      -- for (int v = 0; v < G.V(); v++) {
+      --     if (!marked[v]) dfs(G, v);
+      -- }
+      tarjanFor : ∀ v {vs}
+                → IxIO (λ xs → xs SubsequenceOf vs)
+                       ⊤
+                       (λ _ xs → xs SubsequenceOf vs)
+      tarjanFor v = do
+        ixWhen (v < n) do
+          rearrange (λ _ (_ , p) → p)
+          v-marked? ← lift (marked [ v ])
+          ixWhen (not v-marked?) do
+            rearrange (λ _ (_ , p) → p)
+            dfs v
+          tarjanFor (succ v)
         where
           open IxMonad IxIO-Monad
-    dfs : ∀ {vs}
-        → Int
-        → IxIO (λ xs → xs SubsequenceOf vs)
-               ⊤
-               (λ _ xs → xs SubsequenceOf vs)
-    dfs v = M2.dfs dfs v
 
-    -- for (int v = 0; v < G.V(); v++) {
-    --     if (!marked[v]) dfs(G, v);
-    -- }
-    tarjanFor : ∀ v {vs}
-              → IxIO (λ xs → xs SubsequenceOf vs)
-                     ⊤
-                     (λ _ xs → xs SubsequenceOf vs)
-    tarjanFor v = do
-      ixWhen (v < n) do
-        rearrange (λ _ (_ , p) → p)
-        v-marked? ← lift (marked [ v ])
-        ixWhen (not v-marked?) do
-          rearrange (λ _ (_ , p) → p)
-          dfs v
-        tarjanFor (succ v)
-      where
-        open IxMonad IxIO-Monad
+  -- marked = new boolean[G.V()];
+  -- stack = new Stack<Integer>();
+  -- id = new int[G.V()]; 
+  -- low = new int[G.V()];
+  -- for (int v = 0; ...) {...}
+  tarjan : IO (Array Int)
+  tarjan = withStack λ stack stack-size → do
+    marked ← lift (newArray n false)
+    id ← lift (newArray n (fromℕ 0))
+    low ← lift (newArray n (fromℕ 0))
+    pre ← lift (newIORef (fromℕ 0))
+    count ← lift (newIORef (fromℕ 0))
+    rearrange (λ xs []≡xs → subst (λ xs → xs SubsequenceOf []) []≡xs [])
+    tarjanFor stack stack-size marked id low pre count (fromℕ 0)
+    return id
+    where
+      open IxMonad IxIO-Monad
 
---  -- marked = new boolean[G.V()];
---  -- stack = new Stack<Integer>();
---  -- id = new int[G.V()]; 
---  -- low = new int[G.V()];
---  -- for (int v = 0; ...) {...}
---  tarjan : IO (Array Int)
---  tarjan = do
---    marked ← newArray n false
---    stack ← newArray n (fromℕ 0)
---    stack-size ← newIORef (fromℕ 0)
---    id ← newArray n (fromℕ 0)
---    low ← newArray n (fromℕ 0)
---    pre ← newIORef (fromℕ 0)
---    count ← newIORef (fromℕ 0)
---    tarjanFor marked id low stack stack-size pre count (fromℕ 0)
---    return id
---    where
---      open Monad IO-Monad
---
 --main : IO ⊤
 --main = do
 --  g ← mkExampleGraph
