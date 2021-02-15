@@ -14,7 +14,7 @@ record Monad (M : Set → Set) : Set where
   m⊤ >> mA = m⊤ >>= λ _ → mA
 
 module _ {I : Set} where
-  record IxMonad (M : (@erased p : I → Set) → (A : Set) → (@erased q : A → I → Set) → Set) : Set where
+  record IxMonad (M : (@erased p : I) → (A : Set) → (@erased q : A → I) → Set) : Set where
     field
       return : ∀ {@erased p} {A}
              → A → M p A (λ _ → p)
