@@ -1,4 +1,4 @@
-This repo is to implement [Tarjan's algorithm](https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm) in Agda. It's an algorithm which takes a graph and divides it into its strongly-connected components.
+This repo implements [Tarjan's algorithm](https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm) in Agda. It's an algorithm which takes a graph and divides it into its strongly-connected components.
 
 This is inspired from [a challenge from @catnaroek](https://twitter.com/catnaroek/status/1356847771765116928):
 
@@ -14,38 +14,22 @@ Our approach is:
 
 The first two steps are technically sufficient to satisfy the two requirements of the challenge: it's the same algorithm, implemented using mutable arrays, and since we are using unsafe array-indexing calls, no runtime checks are performed. The third step is required in order to also satisfy the _spirit_ of the challenge, which is not just about avoiding a runtime check, but about using the type checker to guarantee that no runtime check is necessary. Finally, the fourth step prevents the third step from having an impact on the asymptotic complexity.
 
-## Proof 1
+## Proof
 
-Here is a pen-and-paper version of an easier version of the proof.
+Here is a pen-and-paper version of the proof. I intentionally spell out and repeat some obvious facts in order to match the structure of the computer proof.
 
-By induction, assume that the net effect of each recursive calls to `dfs` is to push zero or more values onto the stack. We now need to prove that the `dfs` call which makes those recursive calls also has this net effect. It first pushes `v` onto the stack, then performs a number of recursive calls which may push more values. Then, `dfs` may returns early, in which case the condition is satisfied because so far it has only pushed. Otherwise, `dfs` pops all the values from the stack until it pops `v`, in which case the condition is also satisfied because the stack is exactly as it was at the beginning of the call.
+In the proof (but not at runtime), I represent the contents of the stack as a list, with the top of the stack being at the head of the list. So `[u] ++ xs ++ [v] ++ ys` is a stack with `u` at the top and `v` somewhere underneath. I say that `[u,v]` is a "subsequence" of `[u] ++ xs ++ [v] ++ ys`. `[v]` and `[]` are also subsequences of that list.
 
-Note that `v` is still on the stack when we call `pop`, and therefore the stack is non-empty and so the call is safe.
+We want to prove that at the moment we call `pop`, the stack is non-empty. We will use induction to prove a more general statement. If we know that `vs` is a subsequence of the stack at the beginning of a call to `dfs v`, then before we call `pop` during that call, `v ∷ vs` is a subsequence and thus the stack is not empty. Furthermore, at the end of the `dfs` call, `vs` is still a subsequence of the stack.
 
-## Proof 2
+Let us thus suppose that we know that `vs` is a subsequence of the stack at the beginning of a call to `dfs v`. The function first pushes `v` onto the stack; `v ∷ vs` is now a subsequence. Then, zero or more recursive calls to `dfs` are performed; by induction, `v ∷ vs` is still a subsequence.
 
-The above proof assumes that `dfs` pops all the values from the stack until it pops the `v` it initially pushed onto the stack. The code does that by popping values until the popped value is equal to `v`, which in practice will be that same `v` because the algorithm never pushes the same value onto the stack. I would prefer not to also have to prove that the algorithm never pushes the same value onto the stack, and fortunately, I don't have to, because the proof still goes through in the counter-factual case in which a different `v` is popped:
+At this point, the function may return early, in which case the end condition is satisfied because if `v ∷ vs` is a subsequence, then `vs` is also a subsequence, as desired.
 
-...Otherwise, `dfs` pops some values from the stack until it pops a `v`. Since a `v` was pushed onto the stack at the very beginning of the `dfs` call, that `v` acts as a guard which guarantees that we stop popping before we touch anything which was on the stack before the `dfs` call began. Thus, any of the values we have popped must be values which have been pushed during the `dfs` call, and thus its net effect is to push zero or more values, as desired.
+If the function does not return early, it then pops a number of values from the stack until a `v` is popped. Before the first pop, `v ∷ vs` is a subsequence, as desired, but after the pop, there are now two possibilities: either the `v` from that subsequence is popped and `vs` is now a subsequence, or some prior entry is popped and `v ∷ vs` is still a subsequence.
 
-## Proof 3
+To determine whether the function should keep popping, it checks if the popped value is equal to `v`. If it isn't, then we know that we are in the case in which `v ∷ vs` is still a subsequence. The loop continues, and `v ∷ vs` is still a subsequence before the next pop, as desired.
 
-Agda needs every step to be spelled out, we can't say vague things like "we have only pushed so far" nor "that `v` acts as a guard". Here's a version of the proof in which a lot more steps are spelled out. We model the stack contents as a list, with the top of the stack being on the left of the list.
+It the popped value is equal to `v`, then in practice it is going to be the `v` from the subsequence, because the algorithm only pushes a single `v` on the stack. We are thus in the other case, in which the subsequence is now `vs`, the loop terminates, and the end condition is achieved because `vs` is a subsequence.
 
-By induction, we want to prove that if the stack contains `zs` at the beginning of the `dfs` call, `zs` will be a suffix of the contents of the stack at the end of the call.
-
-1. The stack initially contains `zs`.
-2. `v` is pushed, so the stack now contains `[v] ++ zs`.
-3. More generally, the stack now ends with `[v] ++ zs`.
-4. We are now making zero or more recursive calls to `dfs`. Skip to step 8 once we're done making those calls.
-3. The stack now ends with `[v] ++ zs`. In other words, the stack contains `ys ++ [v] ++ zs` for some `ys`.
-5. Recursively call `dfs`. By induction, the stack now ends with `ys ++ [v] ++ ys`.
-6. The stack thus also ends with `[v] ++ ys`.
-7. Go to step 4.
-8. The stack still ends with `[v] ++ zs`.
-9. We are now popping values from the stack. This section is sometimes skipped, in which case skip to step 12.
-10. Pop a value from the stack. Either the stack now contains `zs`, in which case the popped value is `v`, or the stack still ends with `[v] ++ zs`.
-11. If the popped value is not `v`, the stack still ends with `[v] ++ zs`. Go to 10.
-12. Otherwise the value is `v`, and the stack either contains `zs` or it ends with `[v] ++ zs`. In both cases, the stack now ends with `zs`, as desired.
-
-These are only the steps which affect the contents of the stack. The full proof is interleaved with the implementation of the algorithm, and thus contains a lot of concrete instructions like "increment the number of strongly-connected components", accompanied by a short indication (the word `lift`) that the step does not change the contents of the stack.
+However, since we did not prove that only one `v` exists in the stack, we must also consider the case in which the popped value is equal to `v`, but it is not the `v` from our subsequence, it is a different `v` which has been left on the stack by one of the recursive calls. In that (counter-factual) case, `v ∷ vs` is still a subsequence when the function ends, but once again, our end condition is achieved because if `v ∷ vs` is a subsequence, then `vs` is also a subsequence, as desired.
