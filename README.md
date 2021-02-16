@@ -2,7 +2,7 @@ This repo implements [Tarjan's algorithm](https://en.wikipedia.org/wiki/Tarjan%2
 
 It is inspired from [a challenge from @catnaroek](https://twitter.com/catnaroek/status/1356847771765116928):
 
-1. Implement the real algorithm, with the correct asymptotic complexity. This probably implies that we must use immutable arrays, which are uncommon in Agda (we usually prefer to use immutable length-indexed vectors).
+1. Implement the real algorithm, with the correct asymptotic complexity. This probably implies that we must use mutable arrays, which are uncommon in Agda (we usually prefer to use immutable length-indexed vectors).
 2. Don't perform a runtime check if one is not required. In particular, because of the design of the algorithm, [this `pop` call](https://github.com/kevin-wayne/algs4/blob/master/src/main/java/edu/princeton/cs/algs4/TarjanSCC.java#L97) is always guaranteed to succeed, so we don't need to check whether the stack is empty.
 
 Our approach is:
