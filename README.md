@@ -27,3 +27,25 @@ Note that `v` is still on the stack when we call `pop`, and therefore the stack 
 The above proof assumes that `dfs` pops all the values from the stack until it pops the `v` it initially pushed onto the stack. The code does that by popping values until the popped value is equal to `v`, which in practice will be that same `v` because the algorithm never pushes the same value onto the stack. I would prefer not to also have to prove that the algorithm never pushes the same value onto the stack, and fortunately, I don't have to, because the proof still goes through in the counter-factual case in which a different `v` is popped:
 
 ...Otherwise, `dfs` pops some values from the stack until it pops a `v`. Since a `v` was pushed onto the stack at the very beginning of the `dfs` call, that `v` acts as a guard which guarantees that we stop popping before we touch anything which was on the stack before the `dfs` call began. Thus, any of the values we have popped must be values which have been pushed during the `dfs` call, and thus its net effect is to push zero or more values, as desired.
+
+## Proof 3
+
+Agda needs every step to be spelled out, we can't say vague things like "we have only pushed so far" nor "that `v` acts as a guard". Here's a version of the proof in which a lot more steps are spelled out. We model the stack contents as a list, with the top of the stack being on the left of the list.
+
+By induction, we want to prove that if the stack contains `zs` at the beginning of the `dfs` call, `zs` will be a suffix of the contents of the stack at the end of the call.
+
+1. The stack initially contains `zs`.
+2. `v` is pushed, so the stack now contains `[v] ++ zs`.
+3. More generally, the stack now ends with `[v] ++ zs`.
+4. We are now making zero or more recursive calls to `dfs`. Skip to step 8 once we're done making those calls.
+3. The stack now ends with `[v] ++ zs`. In other words, the stack contains `ys ++ [v] ++ zs` for some `ys`.
+5. Recursively call `dfs`. By induction, the stack now ends with `ys ++ [v] ++ ys`.
+6. The stack thus also ends with `[v] ++ ys`.
+7. Go to step 4.
+8. The stack still ends with `[v] ++ zs`.
+9. We are now popping values from the stack. This section is sometimes skipped, in which case skip to step 12.
+10. Pop a value from the stack. Either the stack now contains `zs`, in which case the popped value is `v`, or the stack still ends with `[v] ++ zs`.
+11. If the popped value is not `v`, the stack still ends with `[v] ++ zs`. Go to 10.
+12. Otherwise the value is `v`, and the stack either contains `zs` or it ends with `[v] ++ zs`. In both cases, the stack now ends with `zs`, as desired.
+
+These are only the steps which affect the contents of the stack. The full proof is interleaved with the implementation of the algorithm, and thus contains a lot of concrete instructions like "increment the number of strongly-connected components", accompanied by a short indication (the word `lift`) that the step does not change the contents of the stack.
