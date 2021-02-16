@@ -46,6 +46,11 @@ module _ (g : Graph)
   n : Int
   n = size g
 
+  -- 'withStack', 'push', and 'pop' are the thrusted base: their
+  -- types describe the properties which we expect 'push' and 'pop'
+  -- to obey, but we do not prove those properties. We cannot,
+  -- because they use the FFI.
+
   withStack : {A : Set} {P : A → List Int → Set}
             → (Array Int → IORef Int → IxIO (λ xs → [] ≡ xs) A P)
             → IO A
@@ -81,6 +86,33 @@ module _ (g : Graph)
       stack [ i ]
       where
         open Monad IO-Monad
+
+    -- From now on, we no longer use unsafe functions, and we never
+    -- interact with 'stack' nor 'stack-size' directly, we always
+    -- go through 'push' and 'pop'. The compiler would catch our
+    -- mistake if we wrote a variant of the algorithm in which the
+    -- stack was not guaranteed to be non-empty when we call 'pop'.
+    --
+    -- It would not catch cases in which e.g. we cheat by using
+    -- postulates, by writing proofs which exploit --no-termination
+    -- or --type-in-type, or by manipulating the stack directly;
+    -- but the original challenge was for Haskell, which would ¬
+    -- catch those either, so I chose not to make life
+    -- unnecessarily hard for myself by using Agda's stricter
+    -- default level of paranoia.
+    --
+    -- It also doesn't catch any other kind of mistake, such as
+    -- buffer _over_ flows by pushing more than 'n' elements. The
+    -- other arrays in the program are similarly unchecked, I am
+    -- focusing solely on the problematic 'pop' call.
+    -- 
+    -- I recommend reading the rest of this file starting from the
+    -- bottom, because Agda wants me to write the function
+    -- definitions before the function calls, and that means that
+    -- the end of the algorithm is at the top while the start of
+    -- the algorithm is at the bottom. I have included the part of
+    -- the Java code which each function transliterates, for easy
+    -- reference.
 
     module _
            (marked : Array Bool)
